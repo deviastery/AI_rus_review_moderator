@@ -12,7 +12,6 @@ from datetime import datetime
 from sklearn.utils.class_weight import compute_class_weight
 from .model import build_model, MAX_SEQ_LEN, MAX_NUM_WORDS
 from .preprocessor import load_dataset
-from .utils import print_graph
 
 # Путь к dataset_reviews.csv относительно текущего файла
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

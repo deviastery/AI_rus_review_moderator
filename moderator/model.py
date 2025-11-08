@@ -1,8 +1,7 @@
 from keras.models import Sequential, load_model
-from keras.layers import Embedding, LSTM, Dense, Dropout, Conv1D, MaxPooling1D, Bidirectional, BatchNormalization, GlobalAveragePooling1D
+from keras.layers import Embedding, Dense, Dropout, GlobalAveragePooling1D
 from keras.optimizers import Adam
 from tensorflow.keras.preprocessing.text import tokenizer_from_json
-from keras.regularizers import l2
 import json
 
 # Категории контента модератора
