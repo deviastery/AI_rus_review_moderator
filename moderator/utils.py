@@ -1,5 +1,3 @@
-import matplotlib.pyplot as plt
-
 def probabilities_to_levels(probs):
     return [probability_to_level(p) for p in probs]
 

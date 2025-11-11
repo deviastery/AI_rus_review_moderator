@@ -9,10 +9,10 @@ def load_dataset(csv_path):
     with open(csv_path, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
-    for i, line in enumerate(lines[1:], start=2):
+    for i, line in enumerate(lines[1:], start=2):  # пропускаем первую строку с классами
+        
         line = line.strip()
-        if not line:
-            print(f"Строка {i}: пустая")
+        if not line or line.startswith('#'):  # пропускаем пустые строки и комментарии
             continue
 
         first_space = line.find(' ')

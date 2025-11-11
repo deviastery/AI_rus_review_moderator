@@ -14,8 +14,6 @@ CATEGORIES = [
 ]
 # Максимальное количество слов в отзыве
 MAX_SEQ_LEN = 64
-# Максимальное количество слов в словаре
-MAX_NUM_WORDS = 20000
 
 def build_model(vocab_size):
     model = Sequential([
