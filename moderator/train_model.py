@@ -7,12 +7,13 @@ import json
 from sklearn.model_selection import train_test_split
 from keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.preprocessing.text import Tokenizer
-from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
+from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, TensorBoard
 from datetime import datetime
 from sklearn.utils.class_weight import compute_class_weight
-from .model import build_model, MAX_SEQ_LEN
+from .model import build_model, REVIEW_LENGTH, VOCABULARY_SIZE
 from .preprocessor import load_dataset
-from tensorflow.keras.models import load_model
+
+import tensorflow as tf
 
 # Пути относительно текущего файла
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -25,8 +26,7 @@ TOKENIZER_PATH = os.path.join(DATA_DIR, "tokenizer.json")
 def train_model(
     epochs = 50,
     batch_size = 256,
-    added_weight = 3.0,
-    max_vocab_size = 30000
+    added_weight = 3.0
 ): 
     print("Загрузка датасета...")
     texts_main, labels_main = load_dataset(MAIN_DATASET)
@@ -46,7 +46,7 @@ def train_model(
         texts = texts_main + texts_added
         labels = labels_main + labels_added
 
-    print(f"Всего отзывов: {len(texts)} из них {int(len(texts_added)/dup_factor)} добавленных")
+    print(f"Всего отзывов: {len(texts)} (добавленных: {int(len(texts_added)/dup_factor)})")
 
     # Преобразование меток в multi-label формат
     y_list = []
@@ -62,7 +62,7 @@ def train_model(
 
     y = np.array(y_list, dtype=np.float32)  # shape: (N, 5)
     # Токенизация текста
-    tokenizer = Tokenizer(num_words=max_vocab_size, oov_token="<OOV>")
+    tokenizer = Tokenizer(num_words=VOCABULARY_SIZE, oov_token="<OOV>")
     # Сначала обучаем на added_dataset
     if texts_added:
         tokenizer.fit_on_texts(texts_added)
@@ -70,8 +70,8 @@ def train_model(
     tokenizer.fit_on_texts(texts)
     sequences = tokenizer.texts_to_sequences(texts)
 
-    # Дополнение массива до размера MAX_SEQ_LEN
-    X = pad_sequences(sequences, maxlen=MAX_SEQ_LEN, padding='post', truncating='post')
+    # Дополнение отзыва до размера REVIEW_LENGTH
+    X = pad_sequences(sequences, maxlen=REVIEW_LENGTH, padding='post', truncating='post')
 
     X_train, X_val, y_train, y_val = train_test_split(
         X, y,
@@ -79,9 +79,7 @@ def train_model(
         stratify=np.argmax(y, axis=1)
     )
 
-    vocab_size = min(max_vocab_size, len(tokenizer.word_index) + 1)
-
-    model = build_model(vocab_size)
+    model = build_model()
     model.summary()
         
     # Папка для логов
@@ -91,13 +89,24 @@ def train_model(
     os.makedirs("moderator/data", exist_ok=True)
 
     print("Начинаем обучение...")
+    
+    print("GPU доступен:", tf.config.list_physical_devices('GPU'))
+    print("TF версия:", tf.__version__)
+
     callbacks = [
-        EarlyStopping(
-            monitor='val_loss',
-            patience=3,               
-            restore_best_weights=True 
-        ),
+        # EarlyStopping(
+        #     monitor='val_loss',
+        #     patience=3,               
+        #     restore_best_weights=True 
+        # ),
         ModelCheckpoint(MODEL_PATH, save_best_only=True, monitor='val_loss'),
+        ReduceLROnPlateau(
+            monitor='val_accuracy',
+            factor=0.5,     
+            patience=2,  
+            min_lr=1e-6,    
+            mode='max'
+        ),
         TensorBoard(log_dir=log_dir, histogram_freq=1, write_graph=True, update_freq='epoch')
     ]
 
@@ -112,8 +121,8 @@ def train_model(
 
     history = model.fit(
         X_train, y_train,
-        batch_size=batch_size,         
-        epochs=epochs,    
+        batch_size=90,         
+        epochs=20,    
         validation_data=(X_val, y_val),
         verbose=1, 
         class_weight=class_weight_dict,

@@ -1,6 +1,5 @@
 from keras.models import Sequential, load_model
-from keras.layers import Embedding, Dense, Dropout, GlobalAveragePooling1D
-from keras.optimizers import Adam
+from keras.layers import Embedding, Dense, Dropout, LSTM, BatchNormalization
 from tensorflow.keras.preprocessing.text import tokenizer_from_json
 import json
 
@@ -12,23 +11,25 @@ CATEGORIES = [
     "obscenity",
     "meaningless"
 ]
-# Максимальное количество слов в отзыве
-MAX_SEQ_LEN = 64
+# Размерность векторного представления каждого слова
+EMBEDDING_VECTOR_LENGTH = 128
+# Размерность отзыва
+REVIEW_LENGTH = 500
+# Размерность словаря
+VOCABULARY_SIZE = 20_000
 
-def build_model(vocab_size):
+def build_model():
     model = Sequential([
-        Embedding(vocab_size, 64), 
-        GlobalAveragePooling1D(),
-        Dropout(0.5),
-        Dense(128, activation="selu"),
-        Dropout(0.5),
-        Dense(64, activation="selu"),
+        Embedding(VOCABULARY_SIZE, EMBEDDING_VECTOR_LENGTH, input_length=REVIEW_LENGTH), 
+        LSTM(100, dropout=0.8),
+        BatchNormalization(),
+        Dropout(0.8),
         Dense(len(CATEGORIES), activation='sigmoid')
     ])
     model.compile(
-        optimizer=Adam(learning_rate=0.0001),
+        optimizer='RMSprop',
         loss='binary_crossentropy',
-        metrics=['binary_accuracy']
+        metrics=['accuracy']
     )
     return model
 
