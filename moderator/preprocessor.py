@@ -1,5 +1,5 @@
 import re
-from keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 from .model import REVIEW_LENGTH
 
 def load_dataset(csv_path):

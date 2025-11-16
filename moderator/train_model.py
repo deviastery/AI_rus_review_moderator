@@ -1,19 +1,23 @@
 import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1' 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 
 import numpy as np
 import json
 from sklearn.model_selection import train_test_split
-from keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.preprocessing.text import Tokenizer
-from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, TensorBoard
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, TensorBoard
 from datetime import datetime
 from sklearn.utils.class_weight import compute_class_weight
 from .model import build_model, REVIEW_LENGTH, VOCABULARY_SIZE
 from .preprocessor import load_dataset
+from tensorflow.keras import mixed_precision
 
-import tensorflow as tf
+# Ускорение обучения за счет экономии памяти на хранении данных
+policy = mixed_precision.Policy('mixed_float16')
+mixed_precision.set_global_policy(policy)
+
 
 # Пути относительно текущего файла
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -89,24 +93,15 @@ def train_model(
     os.makedirs("moderator/data", exist_ok=True)
 
     print("Начинаем обучение...")
-    
-    print("GPU доступен:", tf.config.list_physical_devices('GPU'))
-    print("TF версия:", tf.__version__)
 
     callbacks = [
-        # EarlyStopping(
-        #     monitor='val_loss',
-        #     patience=3,               
-        #     restore_best_weights=True 
-        # ),
-        ModelCheckpoint(MODEL_PATH, save_best_only=True, monitor='val_loss'),
-        ReduceLROnPlateau(
-            monitor='val_accuracy',
-            factor=0.5,     
-            patience=2,  
-            min_lr=1e-6,    
-            mode='max'
+        EarlyStopping(
+            monitor='val_loss',
+            patience=3,               
+            restore_best_weights=True 
         ),
+        ModelCheckpoint(MODEL_PATH, save_best_only=True, verbose=0, monitor='val_loss'),
+        ReduceLROnPlateau(monitor='val_binary_accuracy', factor=0.5, patience=2, min_lr=1e-6, verbose=0, mode='max'),
         TensorBoard(log_dir=log_dir, histogram_freq=1, write_graph=True, update_freq='epoch')
     ]
 
@@ -119,12 +114,13 @@ def train_model(
     )
     class_weight_dict = dict(enumerate(class_weights))
 
+
     history = model.fit(
         X_train, y_train,
-        batch_size=90,         
+        batch_size=512,         
         epochs=20,    
         validation_data=(X_val, y_val),
-        verbose=1, 
+        verbose=1,  
         class_weight=class_weight_dict,
         callbacks=callbacks
     )

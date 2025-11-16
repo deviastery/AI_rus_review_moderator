@@ -1,5 +1,5 @@
-from keras.models import Sequential, load_model
-from keras.layers import Embedding, Dense, Dropout, LSTM, BatchNormalization
+from tensorflow.keras.models import Sequential, load_model
+from tensorflow.keras.layers import Embedding, Dense, Dropout, LSTM, BatchNormalization, Bidirectional
 from tensorflow.keras.preprocessing.text import tokenizer_from_json
 import json
 
@@ -20,16 +20,17 @@ VOCABULARY_SIZE = 20_000
 
 def build_model():
     model = Sequential([
-        Embedding(VOCABULARY_SIZE, EMBEDDING_VECTOR_LENGTH, input_length=REVIEW_LENGTH), 
-        LSTM(100, dropout=0.8),
+        Embedding(VOCABULARY_SIZE, EMBEDDING_VECTOR_LENGTH),
+        Bidirectional(LSTM(100, dropout=0.4)),
         BatchNormalization(),
-        Dropout(0.8),
+        Dropout(0.4),
+        Dense(64, activation='selu'),
         Dense(len(CATEGORIES), activation='sigmoid')
     ])
     model.compile(
-        optimizer='RMSprop',
+        optimizer='Adam',
         loss='binary_crossentropy',
-        metrics=['accuracy']
+        metrics=['binary_accuracy']
     )
     return model
 
