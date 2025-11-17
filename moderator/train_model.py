@@ -12,12 +12,6 @@ from datetime import datetime
 from sklearn.utils.class_weight import compute_class_weight
 from .model import build_model, REVIEW_LENGTH, VOCABULARY_SIZE
 from .preprocessor import load_dataset
-from tensorflow.keras import mixed_precision
-
-# Ускорение обучения за счет экономии памяти на хранении данных
-policy = mixed_precision.Policy('mixed_float16')
-mixed_precision.set_global_policy(policy)
-
 
 # Пути относительно текущего файла
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -28,8 +22,8 @@ MODEL_PATH = os.path.join(DATA_DIR, "model.keras")
 TOKENIZER_PATH = os.path.join(DATA_DIR, "tokenizer.json")
 
 def train_model(
-    epochs = 50,
-    batch_size = 256,
+    epochs = 20,
+    batch_size = 512,
     added_weight = 3.0
 ): 
     print("Загрузка датасета...")
@@ -40,6 +34,8 @@ def train_model(
         print("В added_dataset_reviews.csv нет отзывов — обучение только на основном датасете.")
         texts = texts_main
         labels = labels_main
+
+        print(f"Всего отзывов: {len(texts)}")
     else:
         # Дублирование отзывов
         dup_factor = int(added_weight)
@@ -49,8 +45,7 @@ def train_model(
 
         texts = texts_main + texts_added
         labels = labels_main + labels_added
-
-    print(f"Всего отзывов: {len(texts)} (добавленных: {int(len(texts_added)/dup_factor)})")
+        print(f"Всего отзывов: {len(texts)} (добавленных: {int(len(texts_added)/dup_factor)})")
 
     # Преобразование меток в multi-label формат
     y_list = []
@@ -95,11 +90,7 @@ def train_model(
     print("Начинаем обучение...")
 
     callbacks = [
-        EarlyStopping(
-            monitor='val_loss',
-            patience=3,               
-            restore_best_weights=True 
-        ),
+        EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True),
         ModelCheckpoint(MODEL_PATH, save_best_only=True, verbose=0, monitor='val_loss'),
         ReduceLROnPlateau(monitor='val_binary_accuracy', factor=0.5, patience=2, min_lr=1e-6, verbose=0, mode='max'),
         TensorBoard(log_dir=log_dir, histogram_freq=1, write_graph=True, update_freq='epoch')
@@ -117,8 +108,8 @@ def train_model(
 
     history = model.fit(
         X_train, y_train,
-        batch_size=512,         
-        epochs=20,    
+        batch_size=batch_size,         
+        epochs=epochs,    
         validation_data=(X_val, y_val),
         verbose=1,  
         class_weight=class_weight_dict,

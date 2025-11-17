@@ -38,7 +38,7 @@ def preprocess_text(text):
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-def tokenize_and_vectorize(text, tokenizer, max_len=REVIEW_LENGTH):
+def tokenize_and_vectorize(text, tokenizer):
     """Токенизация и векторизация отзыва перед подачей в модель"""
     clean = preprocess_text(text)
     seq = tokenizer.texts_to_sequences([clean])
