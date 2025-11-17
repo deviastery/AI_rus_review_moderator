@@ -1,6 +1,6 @@
 import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1' 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
 
 from .model import load_pretrained_model, CATEGORIES
 from .preprocessor import tokenize_and_vectorize
@@ -34,13 +34,13 @@ class ReviewModerator:
         self.model, self.tokenizer = load_pretrained_model(model_path, tokenizer_path)
         self.categories = CATEGORIES
 
-    def predict_proba(self, text: str) -> dict:
+    def predict_proba(self, text):
         """Возвращает вероятности по категориям"""
         X = tokenize_and_vectorize(text, self.tokenizer)
-        probs = self.model.predict(X, verbose=0)[0]  # shape: (5,)
+        probs = self.model.predict(X, verbose=0)[0]
         return {cat: float(p) for cat, p in zip(self.categories, probs) if cat != 'normal'}
 
-    def predict_levels(self, text: str) -> dict:
+    def predict_levels(self, text):
         """Возвращает уровни 0–5 по категориям"""
         probs = self.predict_proba(text)
         levels = {cat: probabilities_to_levels([p])[0] for cat, p in probs.items() if cat != 'normal'}
@@ -48,8 +48,14 @@ class ReviewModerator:
 
 def moderate(text: str, return_probs=False):
     """Анализирует текст и возвращает уровни или вероятности"""
-    moderator = _get_moderator()
-    return moderator.predict_proba(text) if return_probs else moderator.predict_levels(text)
+    try:
+        moderator = _get_moderator()
+        return moderator.predict_proba(text) if return_probs else moderator.predict_levels(text)
+    
+    except Exception as e:
+        print("Произошла ошибка при модерации отзыва")
+        print(f"Ошибка: {type(e).__name__}: {e}")
+        return False
     
 def add_review(text: str, labels: list):
     """
@@ -85,14 +91,14 @@ def add_review(text: str, labels: list):
         return True
 
     except Exception as e:
+        print("Произошла ошибка при добавлении отзыва")
         print(f"Ошибка: {type(e).__name__}: {e}")
         return False
 
 def retrain_model(
     epochs = 5,
     batch_size = 256,
-    added_weight = 3.0,
-    max_vocab_size = 30000
+    added_weight = 3.0
 ):
     """
     Полное переобучение модели с приоритетом на added_dataset_reviews.csv.
@@ -101,14 +107,14 @@ def retrain_model(
         epochs: количество эпох
         batch_size: размер батча
         added_weight: во сколько раз чаще брать отзывы из added_dataset (по умолчанию 3)
-        max_vocab_size: максимальный размер словаря (увеличивается при росте данных)
     """
     
     try:
-        result = train_model(epochs, batch_size, added_weight, max_vocab_size)
+        result = train_model(epochs, batch_size, added_weight)
         _default_moderator = None
         return result is not None
 
     except Exception as e:
+        print("Произошла ошибка при обучении модели")
         print(f"Ошибка: {type(e).__name__}: {e}")
         return False

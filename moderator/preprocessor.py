@@ -1,6 +1,6 @@
 import re
-from keras.preprocessing.sequence import pad_sequences
-from .model import MAX_SEQ_LEN
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from .model import REVIEW_LENGTH
 
 def load_dataset(csv_path):
     texts = []
@@ -38,9 +38,9 @@ def preprocess_text(text):
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-def tokenize_and_vectorize(text, tokenizer, max_len=MAX_SEQ_LEN):
+def tokenize_and_vectorize(text, tokenizer):
     """Токенизация и векторизация отзыва перед подачей в модель"""
     clean = preprocess_text(text)
     seq = tokenizer.texts_to_sequences([clean])
-    padded = pad_sequences(seq, maxlen=max_len, padding='post', truncating='post')
+    padded = pad_sequences(seq, maxlen=REVIEW_LENGTH, padding='post', truncating='post')
     return padded
