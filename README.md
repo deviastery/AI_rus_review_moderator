@@ -37,6 +37,9 @@ source venv/bin/activate
 
 # 3. Установить зависимости
 pip install -r requirements.txt
+
+# 4. Запустить moderator.test для тестирования функционала проекта
+python -m moderator.test
 ```
 
 Для устройств с графическим процессором Nvidia доступна возможность более быстрого обучения модели на GPU:
